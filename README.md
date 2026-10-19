@@ -7,6 +7,7 @@
 [![AWS Bedrock](https://img.shields.io/badge/AWS%20Bedrock-Serverless%20Agents-FF9900?logo=amazon-aws)](https://aws.amazon.com/bedrock/)
 [![Strands Decider 2B](https://img.shields.io/badge/Strands%20Decider-2B%20Policy%20Gate-527FFF)](https://builder.aws.com)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Unit & Integration Tests](https://github.com/hashan-7/stitch-qa-release-gate/actions/workflows/tests.yml/badge.svg)](https://github.com/hashan-7/stitch-qa-release-gate/actions/workflows/tests.yml)
 [![GitHub Actions CI](https://img.shields.io/badge/GitHub%20Actions-Step%20Summary%20Gate-2088FF?logo=github-actions&logoColor=white)](https://github.com/features/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
