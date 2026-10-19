@@ -1,8 +1,10 @@
 # Stitch QA: Autonomous Pre-Deployment Release Gate with AWS Bedrock and Strands Decider 2B
 
+**Author:** H7  
 **Hackathon Category:** Agent Experience Hackathon: Strands Decider  
 **Repository:** [github.com/hashan-7/stitch-qa-release-gate](https://github.com/hashan-7/stitch-qa-release-gate)  
 **License:** MIT  
+**Tags:** `#strands-decider-2b` `#policy` `#guardrails`  
 
 ---
 
@@ -149,3 +151,12 @@ docker run --rm -v "${PWD}:/project" stitch-qa:latest scan --run /project
 By combining Amazon Bedrock's generative power with Strands Decider 2B's discrete classification speed, Stitch QA establishes a reliable, automated quality gate that prevents broken releases without slowing engineering velocity.
 
 Upcoming capabilities include multi-profile orchestration for monorepos, automated shadow execution of suggested patches, and direct integration with AWS App Runner deployment hooks.
+ 
+---
+
+<div align="center">
+
+**Developed with 💜 by H7**  
+*AWS Agent Experience Hackathon: Strands Decider*
+
+</div>

@@ -1,6 +1,7 @@
 # Stitch QA: 2-Minute Demo Video Walkthrough Script
 
 **Project:** Stitch QA (AWS Agent Experience Hackathon: Strands Decider)  
+**Author:** H7  
 **Total Target Duration:** 120 seconds (2:00)  
 
 ---
@@ -93,3 +94,12 @@
 > "Best of all, Stitch QA is offline-first. A built-in deterministic engine lets developers evaluate the full pipeline without entering credit cards or AWS keys upfront—elevating automatically to live Amazon Bedrock when credentials are configured.
 > 
 > Explore the open-source code and Docker container on GitHub at `hashan-7/stitch-qa-release-gate`. Ship faster, with absolute release certainty."
+
+---
+
+<div align="center">
+
+**Developed with 💜 by H7**  
+*AWS Agent Experience Hackathon: Strands Decider*
+
+</div>
