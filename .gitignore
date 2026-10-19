@@ -22,6 +22,8 @@ stitch_cli.egg-info/
 
 STITCH_QA_REPORT.md
 STITCH_QA_REPORT.json
+**/STITCH_QA_REPORT.md
+**/STITCH_QA_REPORT.json
 
 .DS_Store
 Thumbs.db
@@ -32,9 +34,8 @@ Thumbs.db
 .cache/
 *.tmp
 
-# Test and demo directories - keep them local only
+# Temporary demo directories
 demo-*/
-test-*/
 temp-*/
 scratch-*/
 test-empty*/
