@@ -328,7 +328,6 @@ This project is licensed under the **MIT License**. See [`LICENSE`](LICENSE) for
 
 <div align="center">
 
-**Developed with 💜 for the AWS Agent Experience Hackathon**  
-*Empowering developers with trustworthy, autonomous pre-deployment release intelligence.*
+**Developed with 💜 by H7**
 
 </div>
