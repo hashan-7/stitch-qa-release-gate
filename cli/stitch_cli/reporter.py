@@ -2431,7 +2431,8 @@ def build_qa_decision_markdown(
             ["Risk Score", f"{strands_decider.get('risk_score', 0.0):.2f}"],
             ["Decision Rationale", strands_decider.get("rationale", "")],
             ["Model", strands_decider.get("model", "strands-decider-2b")],
-            ["Engine Architecture", strands_decider.get("engine_mode", "Strands Decider 2B Calibrated Head")],
+            ["Question Type", strands_decider.get("question_type", "ChoiceQuestion")],
+            ["Engine Architecture", strands_decider.get("engine_mode", "Strands Decider 2B System 1 Engine")],
         ])
         decider_table = format_markdown_table(
             [

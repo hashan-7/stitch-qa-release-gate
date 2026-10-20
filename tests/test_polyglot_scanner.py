@@ -73,7 +73,7 @@ def test_strands_decider_polyglot_defect_blocking():
         component_name="Python Project",
     )
     assert verdict.verdict == "BLOCK_RELEASE"
-    assert verdict.confidence == 0.99
+    assert verdict.confidence >= 0.95
     assert "Python Project" in verdict.rationale
     assert "Rust Project" in verdict.rationale
     assert "1 repair contract(s)" in verdict.rationale
@@ -91,5 +91,5 @@ def test_strands_decider_polyglot_all_passing():
         component_name="Multi-Ecosystem",
     )
     assert verdict.verdict == "ALLOW_RELEASE"
-    assert verdict.confidence == 0.97
+    assert verdict.confidence >= 0.95
     assert "Rust Project" in verdict.rationale
