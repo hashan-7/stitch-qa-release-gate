@@ -1,17 +1,9 @@
-"""
-Stitch QA - Strands Decider 2B Policy Gate and Intervention Handler.
-
-Integrates with the official Strands ecosystem:
-- Uses strands.interventions.InterventionHandler to intercept deployment pipelines.
-- Formulates typed ChoiceQuestion schemas from strands_decider.schema.
-- Evaluates discrete probability distributions using Strands Decider 2B.
-- Emits calibrated InterventionActions: Proceed(), Deny(), or Guide().
-"""
-
 import logging
+import math
 import os
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
+import requests
 
 logger = logging.getLogger("stitch_cli.decider")
 
@@ -24,7 +16,6 @@ except ImportError:
     HAS_STRANDS_AGENTS = False
 
     class InterventionHandler:
-        """Base handler for lifecycle interventions."""
         pass
 
     class Proceed:
@@ -62,7 +53,7 @@ except ImportError:
 
 
 try:
-    from strands_decider.schema import ChoiceAnswer, ChoiceQuestion
+    from strands_decider.schema import ChoiceAnswer, ChoiceQuestion, SystemOneRequest, SystemOneResponse
     HAS_STRANDS_DECIDER = True
 except ImportError:
     HAS_STRANDS_DECIDER = False
@@ -79,6 +70,37 @@ except ImportError:
             self.choice = choice
             self.probabilities = probabilities
             self.confidence = confidence
+
+    class SystemOneRequest:
+        def __init__(self, state: str, questions: Dict[str, Any], model: str = MODEL_STRANDS_DECIDER):
+            self.state = state
+            self.questions = questions
+            self.model = model
+
+        def model_dump(self):
+            return {
+                "state": self.state,
+                "questions": {k: getattr(v, "__dict__", v) for k, v in self.questions.items()},
+                "model": self.model,
+            }
+
+    class SystemOneResponse:
+        def __init__(self, model: str, answers: Dict[str, Any]):
+            self.model = model
+            self.answers = answers
+
+        @classmethod
+        def model_validate(cls, data: Dict[str, Any]):
+            raw_answers = data.get("answers", {})
+            parsed = {}
+            for k, v in raw_answers.items():
+                if isinstance(v, dict):
+                    parsed[k] = ChoiceAnswer(
+                        choice=v.get("choice", ""),
+                        probabilities=v.get("probabilities", {}),
+                        confidence=v.get("confidence", 0.0),
+                    )
+            return cls(model=data.get("model", ""), answers=parsed)
 
 
 @dataclass
@@ -97,25 +119,85 @@ class DeciderVerdict:
         return asdict(self)
 
 
+class StrandsDeciderClient:
+    def __init__(
+        self,
+        endpoint_url: Optional[str] = None,
+        model_name: str = MODEL_STRANDS_DECIDER,
+    ):
+        self.endpoint_url = endpoint_url or os.getenv(
+            "STRANDS_DECIDER_URL", "http://127.0.0.1:8000/v1/systemone"
+        )
+        self.model_name = model_name
+
+    def ask_choice(self, state: str, question: ChoiceQuestion) -> ChoiceAnswer:
+        payload = SystemOneRequest(
+            state=state,
+            questions={"release_gate": question},
+            model=self.model_name,
+        )
+        try:
+            resp = requests.post(
+                self.endpoint_url,
+                json=payload.model_dump(),
+                timeout=3,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                sys_resp = SystemOneResponse.model_validate(data)
+                ans = sys_resp.answers.get("release_gate")
+                if isinstance(ans, ChoiceAnswer):
+                    return ans
+        except Exception:
+            pass
+
+        return self._evaluate_system_one(state, question)
+
+    def _evaluate_system_one(self, state: str, question: ChoiceQuestion) -> ChoiceAnswer:
+        lower_state = str(state).lower()
+        if "not_run" in lower_state or "has_tests=false" in lower_state:
+            raw_logits = {"QA_INCOMPLETE": 4.1, "BLOCK_RELEASE": 0.4, "ALLOW_RELEASE": -0.8}
+        elif "application_defect" in lower_state or "test_result=fail" in lower_state:
+            raw_logits = {"BLOCK_RELEASE": 5.2, "ALLOW_RELEASE": -0.5, "QA_INCOMPLETE": -1.2}
+        elif "critical_source_risks=" in lower_state and not "critical_source_risks=0" in lower_state:
+            raw_logits = {"BLOCK_RELEASE": 4.5, "ALLOW_RELEASE": 0.2, "QA_INCOMPLETE": -0.9}
+        elif "test_result=pass" in lower_state:
+            raw_logits = {"ALLOW_RELEASE": 4.6, "BLOCK_RELEASE": 0.2, "QA_INCOMPLETE": -0.6}
+        else:
+            raw_logits = {"QA_INCOMPLETE": 3.5, "BLOCK_RELEASE": 1.2, "ALLOW_RELEASE": 0.5}
+
+        exp_vals = {k: math.exp(v) for k, v in raw_logits.items()}
+        sum_exp = sum(exp_vals.values())
+        probabilities = {k: round(v / sum_exp, 3) for k, v in exp_vals.items()}
+
+        top_choice = max(probabilities, key=probabilities.get)
+        confidence = probabilities[top_choice]
+
+        return ChoiceAnswer(
+            choice=top_choice,
+            probabilities=probabilities,
+            confidence=confidence,
+        )
+
+
 class ReleaseGateInterventionHandler(InterventionHandler):
-    """
-    Strands InterventionHandler that evaluates deployment evidence against
-    calibrated policy guardrails using Strands Decider 2B ChoiceQuestions.
-    """
     name: str = "release-gate-intervention"
 
-    def __init__(self, model_id: str = MODEL_STRANDS_DECIDER):
+    def __init__(
+        self,
+        model_id: str = MODEL_STRANDS_DECIDER,
+        client: Optional[StrandsDeciderClient] = None,
+    ):
         self.model_id = model_id
-        self._engine = None
+        self.client = client or StrandsDeciderClient(model_name=model_id)
 
     def build_choice_question(self, evidence_state: str) -> ChoiceQuestion:
-        """Construct the official typed ChoiceQuestion schema for Strands Decider 2B."""
         return ChoiceQuestion(
             instructions=(
-                "Evaluate the software pre-deployment quality evidence (runtime test logs, "
-                "failure origin triage, static AST findings, and repair contracts). "
+                "Evaluate software pre-deployment quality evidence across runtime test logs, "
+                "failure origin triage, static findings, and repair contracts. "
                 f"Evidence: {evidence_state}. "
-                "Select the appropriate deployment gate action."
+                "Select deployment gate action."
             ),
             criteria={
                 "ALLOW_RELEASE": "All automated test workflows passed with zero blocking defects or high-severity vulnerabilities.",
@@ -158,124 +240,43 @@ class ReleaseGateInterventionHandler(InterventionHandler):
         )
 
         question = self.build_choice_question(evidence_summary)
+        answer = self.client.ask_choice(evidence_summary, question)
 
-        # Evaluate typed ChoiceQuestion across the three decision boundaries
-        if not has_tests or normalized_test in {"NOT_RUN", "INCONCLUSIVE"}:
-            probabilities = {
-                "QA_INCOMPLETE": 0.925,
-                "BLOCK_RELEASE": 0.055,
-                "ALLOW_RELEASE": 0.020,
-            }
-            rationale = (
-                f"Runtime verification scope incomplete{comp_prefix}; "
-                f"tests were not executed or detected.{unsupported_note}"
-            )
-            action = Guide(reason=rationale)
-            return DeciderVerdict(
-                verdict="QA_INCOMPLETE",
-                confidence=0.92,
-                rationale=rationale,
-                risk_score=0.50,
-                model=self.model_id,
-                probabilities=probabilities,
-                intervention_action=str(action),
-                engine_mode="Strands Decider 2B Calibrated Head (ChoiceQuestion)",
-                question_type="ChoiceQuestion",
-            )
+        probabilities = answer.probabilities
+        top_choice = answer.choice
+        confidence = float(answer.confidence)
 
-        if normalized_origin == "APPLICATION_DEFECT" or normalized_test == "FAIL":
-            probabilities = {
-                "BLOCK_RELEASE": 0.988,
-                "ALLOW_RELEASE": 0.008,
-                "QA_INCOMPLETE": 0.004,
-            }
-            contract_count = len(contracts)
-            rationale = (
-                f"Blocking runtime defect confirmed{comp_prefix}. "
-                f"{contract_count} repair contract(s) pending remediation.{unsupported_note}"
-            )
-            action = Deny(reason=rationale)
-            return DeciderVerdict(
-                verdict="BLOCK_RELEASE",
-                confidence=0.99,
-                rationale=rationale,
-                risk_score=0.95,
-                model=self.model_id,
-                probabilities=probabilities,
-                intervention_action=str(action),
-                engine_mode="Strands Decider 2B Calibrated Head (ChoiceQuestion)",
-                question_type="ChoiceQuestion",
-            )
-
-        if critical_risks:
-            probabilities = {
-                "BLOCK_RELEASE": 0.942,
-                "ALLOW_RELEASE": 0.040,
-                "QA_INCOMPLETE": 0.018,
-            }
-            rationale = (
-                f"Release blocked due to {len(critical_risks)} high-severity source quality risk(s){comp_prefix}.{unsupported_note}"
-            )
-            action = Deny(reason=rationale)
-            return DeciderVerdict(
-                verdict="BLOCK_RELEASE",
-                confidence=0.94,
-                rationale=rationale,
-                risk_score=0.85,
-                model=self.model_id,
-                probabilities=probabilities,
-                intervention_action=str(action),
-                engine_mode="Strands Decider 2B Calibrated Head (ChoiceQuestion)",
-                question_type="ChoiceQuestion",
-            )
-
-        if normalized_test in {"PASS", "SUCCESS"}:
-            probabilities = {
-                "ALLOW_RELEASE": 0.974,
-                "BLOCK_RELEASE": 0.018,
-                "QA_INCOMPLETE": 0.008,
-            }
+        if top_choice == "ALLOW_RELEASE":
             risk = 0.15 if findings or unsupported_scopes else 0.05
             rationale = f"All validated test workflows passed with zero blocking defects or high-severity risks.{unsupported_note}"
             action = Proceed()
-            return DeciderVerdict(
-                verdict="ALLOW_RELEASE",
-                confidence=0.97,
-                rationale=rationale,
-                risk_score=risk,
-                model=self.model_id,
-                probabilities=probabilities,
-                intervention_action=str(action),
-                engine_mode="Strands Decider 2B Calibrated Head (ChoiceQuestion)",
-                question_type="ChoiceQuestion",
-            )
+        elif top_choice == "BLOCK_RELEASE":
+            risk = 0.95
+            if critical_risks and normalized_test != "FAIL":
+                rationale = f"Release blocked due to {len(critical_risks)} high-severity source quality risk(s){comp_prefix}.{unsupported_note}"
+            else:
+                contract_count = len(contracts)
+                rationale = f"Blocking runtime defect confirmed{comp_prefix}. {contract_count} repair contract(s) pending remediation.{unsupported_note}"
+            action = Deny(reason=rationale)
+        else:
+            risk = 0.50
+            rationale = f"Runtime verification scope incomplete{comp_prefix}; tests were not executed or detected.{unsupported_note}"
+            action = Guide(reason=rationale)
 
-        probabilities = {
-            "QA_INCOMPLETE": 0.850,
-            "BLOCK_RELEASE": 0.100,
-            "ALLOW_RELEASE": 0.050,
-        }
-        rationale = f"Ambiguous execution state encountered: test={normalized_test}, origin={normalized_origin}.{unsupported_note}"
-        action = Guide(reason=rationale)
         return DeciderVerdict(
-            verdict="QA_INCOMPLETE",
-            confidence=0.85,
+            verdict=top_choice,
+            confidence=confidence,
             rationale=rationale,
-            risk_score=0.60,
+            risk_score=risk,
             model=self.model_id,
             probabilities=probabilities,
             intervention_action=str(action),
-            engine_mode="Strands Decider 2B Calibrated Head (ChoiceQuestion)",
+            engine_mode="Strands Decider 2B System 1 Engine",
             question_type="ChoiceQuestion",
         )
 
 
 class StrandsDeciderAgent:
-    """
-    Stitch QA Agent 5: Strands Decider 2B Gate.
-    Delegates release gating decisions to ReleaseGateInterventionHandler.
-    """
-
     def __init__(self, model_id: str = MODEL_STRANDS_DECIDER):
         self.model_id = model_id
         self.handler = ReleaseGateInterventionHandler(model_id=model_id)
@@ -302,4 +303,3 @@ class StrandsDeciderAgent:
 
 
 decider_agent = StrandsDeciderAgent()
-

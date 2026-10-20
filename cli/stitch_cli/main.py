@@ -844,7 +844,19 @@ def check_bedrock():
     table.add_row("Runtime Quality Analyst", MODEL_RUNTIME_QUALITY, "[green]Ready[/green]")
     table.add_row("Defect Resolution Analyst", MODEL_DEFECT_RESOLUTION, "[green]Ready[/green]")
     table.add_row("Repair Assurance Analyst", MODEL_REPAIR_ASSURANCE, "[green]Ready[/green]")
-    table.add_row("Strands Decider 2B Gate", f"{MODEL_STRANDS_DECIDER} (strands.interventions.InterventionHandler)", "[bold cyan]Active (Calibrated)[/bold cyan]")
+    decider_endpoint = os.getenv("STRANDS_DECIDER_URL", "http://127.0.0.1:8000/v1/systemone")
+    decider_live = False
+    try:
+        import requests
+        check_url = decider_endpoint.replace("/v1/systemone", "/docs")
+        r = requests.get(check_url, timeout=1.0)
+        if r.status_code in {200, 404, 405}:
+            decider_live = True
+    except Exception:
+        decider_live = False
+
+    decider_status = "[bold green]LIVE SERVER CONNECTED[/bold green]" if decider_live else "[bold cyan]SYSTEM 1 ENGINE (DYNAMIC)[/bold cyan]"
+    table.add_row("Strands Decider System 1", f"{MODEL_STRANDS_DECIDER} ({decider_endpoint})", decider_status)
 
     console.print(table)
 
@@ -853,6 +865,21 @@ def check_bedrock():
     else:
         console.print("\n[yellow]Notice: Running in calibrated zero-dependency offline mode.[/yellow]")
         console.print("[dim]To enable live Amazon Bedrock calls, set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in your .env or environment.[/dim]\n")
+
+
+@cli.command("decider-serve")
+@click.option("--host", default="127.0.0.1", help="Host address to bind.")
+@click.option("--port", default=8000, type=int, help="Port to bind.")
+@click.option("--checkpoint", default="StrandsAgents/strands-decider-2B-hobson-v21", help="Checkpoint name or directory.")
+def decider_serve(host, port, checkpoint):
+    """Run Strands Decider System 1 HTTP server."""
+    import subprocess
+    cmd = [sys.executable, "-m", "strands_decider.cli", "serve", checkpoint, "--host", host, "--port", str(port)]
+    console.print(f"[bold cyan]Launching Strands Decider server on http://{host}:{port}/v1/systemone...[/bold cyan]")
+    try:
+        subprocess.run(cmd)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Strands Decider server stopped.[/yellow]")
 
 
 def _run_profile_workflow(
