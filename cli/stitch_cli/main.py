@@ -867,17 +867,59 @@ def check_bedrock():
         console.print("[dim]To enable live Amazon Bedrock calls, set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in your .env or environment.[/dim]\n")
 
 
+def _create_systemone_app(checkpoint: str):
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
+    from stitch_cli.decider_agent import ChoiceQuestion, StrandsDeciderClient
+
+    app = FastAPI(title="strands-decider System One", version="0.1.0")
+    client = StrandsDeciderClient(model_name=checkpoint)
+
+    @app.get("/health")
+    def health():
+        return {
+            "status": "ok",
+            "model": checkpoint,
+            "engine": "Strands Decider 2B System 1 Engine",
+        }
+
+    @app.post("/v1/systemone")
+    def systemone(req: dict):
+        state = str(req.get("state", ""))
+        questions = req.get("questions", {})
+        answers = {}
+        for q_id, q_data in questions.items():
+            choice_q = ChoiceQuestion(
+                instructions=q_data.get("instructions", ""),
+                criteria=q_data.get("criteria", {}),
+            )
+            ans = client._evaluate_system_one(state, choice_q)
+            answers[q_id] = {
+                "type": "choice",
+                "choice": ans.choice,
+                "probabilities": ans.probabilities,
+                "confidence": ans.confidence,
+            }
+        return JSONResponse(content={
+            "model": checkpoint,
+            "answers": answers,
+            "usage": {"input_tokens": max(1, len(state.split())), "output_tokens": 1},
+        })
+
+    return app
+
+
 @cli.command("decider-serve")
 @click.option("--host", default="127.0.0.1", help="Host address to bind.")
 @click.option("--port", default=8000, type=int, help="Port to bind.")
 @click.option("--checkpoint", default="StrandsAgents/strands-decider-2B-hobson-v21", help="Checkpoint name or directory.")
 def decider_serve(host, port, checkpoint):
     """Run Strands Decider System 1 HTTP server."""
-    import subprocess
-    cmd = [sys.executable, "-m", "strands_decider.cli", "serve", checkpoint, "--host", host, "--port", str(port)]
+    import uvicorn
     console.print(f"[bold cyan]Launching Strands Decider server on http://{host}:{port}/v1/systemone...[/bold cyan]")
+    app = _create_systemone_app(checkpoint)
     try:
-        subprocess.run(cmd)
+        uvicorn.run(app, host=host, port=port, log_level="info")
     except KeyboardInterrupt:
         console.print("\n[yellow]Strands Decider server stopped.[/yellow]")
 
