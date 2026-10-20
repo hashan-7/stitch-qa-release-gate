@@ -80,3 +80,83 @@ def test_release_gate_intervention_handler_strands_contract():
     assert "ALLOW_RELEASE" in question.criteria
     assert "BLOCK_RELEASE" in question.criteria
     assert "QA_INCOMPLETE" in question.criteria
+
+
+def test_strands_decider_client_choice_evaluation():
+    from stitch_cli.decider_agent import ChoiceQuestion, StrandsDeciderClient
+
+    client = StrandsDeciderClient()
+    question = ChoiceQuestion(
+        instructions="Evaluate release",
+        criteria={
+            "ALLOW_RELEASE": "Passed",
+            "BLOCK_RELEASE": "Failed",
+            "QA_INCOMPLETE": "Incomplete",
+        },
+    )
+    answer = client.ask_choice("test_result=PASS", question)
+    assert answer.choice == "ALLOW_RELEASE"
+    assert answer.confidence > 0.90
+    assert "ALLOW_RELEASE" in answer.probabilities
+    assert abs(sum(answer.probabilities.values()) - 1.0) < 0.02
+
+
+def test_strands_decider_client_blocks_on_runtime_defect():
+    from stitch_cli.decider_agent import ChoiceQuestion, StrandsDeciderClient
+
+    client = StrandsDeciderClient()
+    question = ChoiceQuestion(
+        instructions="Evaluate release",
+        criteria={
+            "ALLOW_RELEASE": "Passed",
+            "BLOCK_RELEASE": "Failed",
+            "QA_INCOMPLETE": "Incomplete",
+        },
+    )
+    answer = client.ask_choice("test_result=FAIL, origin=APPLICATION_DEFECT", question)
+    assert answer.choice == "BLOCK_RELEASE"
+    assert answer.confidence > 0.90
+    assert answer.probabilities["BLOCK_RELEASE"] > 0.90
+
+
+def test_strands_decider_system_one_payload_and_response():
+    from stitch_cli.decider_agent import (
+        ChoiceAnswer,
+        ChoiceQuestion,
+        SystemOneRequest,
+        SystemOneResponse,
+    )
+
+    question = ChoiceQuestion(
+        instructions="Evaluate release",
+        criteria={"ALLOW_RELEASE": "Passed", "BLOCK_RELEASE": "Failed"},
+    )
+    req = SystemOneRequest(
+        state="test_result=PASS",
+        questions={"release_gate": question},
+        model="StrandsAgents/strands-decider-2B-hobson-v21",
+    )
+    payload = req.model_dump()
+    assert payload["state"] == "test_result=PASS"
+    assert "release_gate" in payload["questions"]
+    assert payload["model"] == "StrandsAgents/strands-decider-2B-hobson-v21"
+
+    raw_response = {
+        "model": "StrandsAgents/strands-decider-2B-hobson-v21",
+        "answers": {
+            "release_gate": {
+                "type": "choice",
+                "choice": "ALLOW_RELEASE",
+                "probabilities": {"ALLOW_RELEASE": 0.98, "BLOCK_RELEASE": 0.02},
+                "confidence": 0.98,
+            }
+        },
+        "usage": {"input_tokens": 24, "output_tokens": 1},
+    }
+    sys_resp = SystemOneResponse.model_validate(raw_response)
+    assert sys_resp.model == "StrandsAgents/strands-decider-2B-hobson-v21"
+    ans = sys_resp.answers["release_gate"]
+    assert isinstance(ans, ChoiceAnswer)
+    assert ans.choice == "ALLOW_RELEASE"
+    assert ans.confidence == 0.98
+
