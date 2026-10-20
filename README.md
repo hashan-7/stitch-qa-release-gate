@@ -186,6 +186,12 @@ python -m pip install -e ./cli
 ### 2. Basic Commands
 
 ```bash
+# Verify Amazon Bedrock and Strands Decider connectivity & model tiers
+stitch check-bedrock
+
+# (Optional) Launch local Strands Decider System 1 HTTP server
+stitch decider-serve --port 8000
+
 # Discover project structure and static mappings
 stitch scan .
 

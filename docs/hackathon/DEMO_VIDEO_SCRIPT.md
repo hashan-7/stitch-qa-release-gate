@@ -18,10 +18,15 @@
 
 ---
 
-## Act 2: Multi-Model Architecture (0:25 – 0:50)
+## Act 2: Multi-Model Architecture & Health Diagnostic (0:25 – 0:50)
 
 **Visual:**
-- Clean display of the Stitch QA architecture diagram from the README. Highlight each model badge as mentioned.
+- Run diagnostic check:
+  ```bash
+  stitch check-bedrock
+  ```
+- Display the Rich CLI health diagnostic table showing Amazon Bedrock foundation models (Claude 3.5 Sonnet, Nova Lite, Nova Pro) and Strands Decider System 1 status.
+- Highlight the architecture diagram from the README.
 
 **Voiceover:**
 > "Rather than using a single bloated model, Stitch QA tiers five specialized agents across Amazon Bedrock:
@@ -46,11 +51,14 @@
   - Repair contracts generated.
   - Strands Decider 2B prints:
     ```
-    Strands Decider 2B Release Gate
+    Strands Decider 2B System 1 Release Gate
     - Verdict: BLOCK_RELEASE
-    - Confidence: 0.99
+    - Confidence: 0.995
+    - Choice Probabilities: BLOCK_RELEASE: 99.5%, ALLOW_RELEASE: 0.3%, QA_INCOMPLETE: 0.2%
     - Calibrated Risk: 0.95
-    - Decision Rationale: Blocking runtime defect confirmed.
+    - Intervention Action: Deny
+    - Decision Rationale: Blocking runtime defect confirmed. 1 repair contract(s) pending remediation.
+    - Target Source: app.py
     ```
 - Show CI exit code `1`.
 - Briefly open `STITCH_QA_REPORT.md` in VS Code showing the structured repair guidance.
@@ -71,10 +79,12 @@
   ```
 - Output prints:
   ```
-  Strands Decider 2B Release Gate
+  Strands Decider 2B System 1 Release Gate
   - Verdict: ALLOW_RELEASE
-  - Confidence: 0.97
-  - Calibrated Risk: 0.15
+  - Confidence: 0.983
+  - Choice Probabilities: ALLOW_RELEASE: 98.3%, BLOCK_RELEASE: 1.2%, QA_INCOMPLETE: 0.5%
+  - Calibrated Risk: 0.05
+  - Intervention Action: Proceed
   ```
 - Show CI exit code `0`.
 
@@ -88,7 +98,7 @@
 ## Act 5: Developer Experience & Wrap-up (1:45 – 2:00)
 
 **Visual:**
-- Show repository on GitHub, Docker container run, and test suite running with 46 passing tests.
+- Show repository on GitHub, Docker container run, and the full test suite running and passing.
 
 **Voiceover:**
 > "Best of all, Stitch QA is offline-first. A built-in deterministic engine lets developers evaluate the full pipeline without entering credit cards or AWS keys upfront—elevating automatically to live Amazon Bedrock when credentials are configured.

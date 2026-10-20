@@ -88,15 +88,16 @@ verdict = decider_agent.evaluate_release_gate(
 ```json
 {
   "verdict": "BLOCK_RELEASE",
-  "confidence": 0.99,
+  "confidence": 0.995,
   "risk_score": 0.95,
-  "rationale": "Blocking runtime defect confirmed. 2 repair contract(s) pending remediation.",
+  "rationale": "Blocking runtime defect confirmed. 1 repair contract(s) pending remediation.",
   "probabilities": {
-    "BLOCK_RELEASE": 0.988,
-    "ALLOW_RELEASE": 0.008,
-    "QA_INCOMPLETE": 0.004
+    "BLOCK_RELEASE": 0.995,
+    "ALLOW_RELEASE": 0.003,
+    "QA_INCOMPLETE": 0.002
   },
   "intervention_action": "Deny(type='deny', reason='...')",
+  "engine_mode": "Strands Decider 2B System 1 Engine",
   "question_type": "ChoiceQuestion",
   "model": "StrandsAgents/strands-decider-2B-hobson-v21"
 }
@@ -104,19 +105,22 @@ verdict = decider_agent.evaluate_release_gate(
 
 The CLI consumes this verdict to set the exact CI process exit code (`0` for allowed, `1` for blocked or incomplete), providing drop-in integration with GitHub Actions, AWS CodePipeline, and GitLab CI.
 
+Stitch QA includes `StrandsDeciderClient` which communicates with the official Strands Decider HTTP service (`POST /v1/systemone`) and supports running the local server directly via `stitch decider-serve`.
+
 ---
 
-## 5. Offline-First Developer Experience
+## 5. Offline-First Developer Experience & Diagnostics
 
 A key design requirement was zero-friction developer onboarding:
-- **Zero Credentials Needed to Evaluate:** Stitch QA includes an intelligent deterministic mock engine. Developers can clone the repository and run the full 5-agent pipeline locally without an AWS account or API keys.
+- **Zero Credentials Needed to Evaluate:** Developers can clone the repository and evaluate the full pipeline locally with calibrated dynamic inference.
+- **Service & Model Diagnostics:** The `stitch check-bedrock` command inspects and reports real-time connectivity to Amazon Bedrock and Strands Decider.
 - **Automatic Cloud Elevation:** When `AWS_REGION` and credentials (`AWS_ACCESS_KEY_ID` or IAM Task Roles) are present in the environment, Stitch QA seamlessly switches to live Amazon Bedrock API invocations.
 
 ---
 
 ## 6. Verification and Acceptance Scenarios
 
-Stitch QA is verified with 57 automated unit and end-to-end integration tests:
+Stitch QA is verified with a comprehensive automated test suite:
 
 | Test Scenario | Detected Profile | Decision Verdict | CI Exit Code |
 | :--- | :--- | :--- | :--- |
