@@ -316,17 +316,17 @@ pytest tests/ cli/tests/ -v
 ```
 
 ```text
-tests/test_bedrock_service.py ........                                   [ 14%]
-tests/test_decider_agent.py .....                                        [ 22%]
-tests/test_e2e_pipeline.py ....                                          [ 29%]
-tests/test_github_step_summary.py ...                                    [ 35%]
-tests/test_polyglot_scanner.py ......                                    [ 45%]
-tests/test_runtime_evidence.py ..                                        [ 49%]
-tests/test_test_report_parser.py ....                                    [ 56%]
-cli/tests/test_maven_runtime_classification.py .....                     [ 64%]
-cli/tests/test_repair_guidance_v2.py ...................                 [ 98%]
+tests/test_bedrock_service.py .........                                  [ 14%]
+tests/test_decider_agent.py ........                                      [ 27%]
+tests/test_e2e_pipeline.py ....                                          [ 34%]
+tests/test_github_step_summary.py ...                                    [ 39%]
+tests/test_polyglot_scanner.py ......                                    [ 49%]
+tests/test_runtime_evidence.py ..                                        [ 52%]
+tests/test_test_report_parser.py ....                                    [ 59%]
+cli/tests/test_maven_runtime_classification.py .....                     [ 67%]
+cli/tests/test_repair_guidance_v2.py ...................                 [ 96%]
 cli/tests/test_runtime_fallback.py ..                                    [100%]
-============================= 57 passed in 4.52s ==============================
+============================= 61 passed in 5.48s ==============================
 ```
 
 ---
