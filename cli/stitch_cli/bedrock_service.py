@@ -60,6 +60,47 @@ class BedrockService:
     def is_mock(self) -> bool:
         return self._is_mock
 
+    def verify_connection(self) -> Dict[str, Any]:
+        """Verify Amazon Bedrock connectivity and return diagnostics."""
+        if self._is_mock:
+            return {
+                "connected": False,
+                "region": self.region_name,
+                "mode": "bedrock-deterministic-offline",
+                "message": "Offline deterministic sandbox mode active. AWS credentials not supplied.",
+            }
+        import time
+        start = time.time()
+        client = self._get_client()
+        if client is None:
+            return {
+                "connected": False,
+                "region": self.region_name,
+                "mode": "bedrock-deterministic-offline",
+                "message": "Bedrock client initialization failed. Falling back to offline engine.",
+            }
+        try:
+            test_res = client.converse(
+                modelId="amazon.nova-lite-v1:0",
+                messages=[{"role": "user", "content": [{"text": "ping"}]}],
+                inferenceConfig={"maxTokens": 5, "temperature": 0.0},
+            )
+            latency = int((time.time() - start) * 1000)
+            return {
+                "connected": True,
+                "region": self.region_name,
+                "mode": "bedrock-live-inference",
+                "latency_ms": latency,
+                "request_id": test_res.get("ResponseMetadata", {}).get("RequestId", ""),
+            }
+        except Exception as exc:
+            return {
+                "connected": False,
+                "region": self.region_name,
+                "mode": "bedrock-deterministic-offline",
+                "error": str(exc),
+            }
+
     def _get_client(self):
         if self._is_mock:
             return None
@@ -123,7 +164,14 @@ class BedrockService:
         )
         response_body = json.loads(response["body"].read().decode("utf-8"))
         text = response_body.get("content", [{}])[0].get("text", "")
-        return self._extract_json(text)
+        parsed = self._extract_json(text)
+        if isinstance(parsed, dict):
+            parsed["mode"] = "bedrock-live-inference"
+            parsed["aws_request_id"] = response.get("ResponseMetadata", {}).get("RequestId", "")
+            parsed["model"] = model_id
+            if "usage" in response_body:
+                parsed["token_usage"] = response_body["usage"]
+        return parsed
 
     def _invoke_nova(
         self,
@@ -155,7 +203,14 @@ class BedrockService:
         )
         response_body = json.loads(response["body"].read().decode("utf-8"))
         text = response_body.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "")
-        return self._extract_json(text)
+        parsed = self._extract_json(text)
+        if isinstance(parsed, dict):
+            parsed["mode"] = "bedrock-live-inference"
+            parsed["aws_request_id"] = response.get("ResponseMetadata", {}).get("RequestId", "")
+            parsed["model"] = model_id
+            if "usage" in response_body:
+                parsed["token_usage"] = response_body["usage"]
+        return parsed
 
     def _invoke_converse(
         self,
@@ -173,7 +228,14 @@ class BedrockService:
             inferenceConfig={"maxTokens": max_tokens, "temperature": temperature},
         )
         text = response.get("output", {}).get("message", {}).get("content", [{}])[0].get("text", "")
-        return self._extract_json(text)
+        parsed = self._extract_json(text)
+        if isinstance(parsed, dict):
+            parsed["mode"] = "bedrock-live-inference"
+            parsed["aws_request_id"] = response.get("ResponseMetadata", {}).get("RequestId", "")
+            parsed["model"] = model_id
+            if "usage" in response:
+                parsed["token_usage"] = response["usage"]
+        return parsed
 
     def _extract_json(self, raw_text: str) -> Dict[str, Any]:
         if not raw_text or not raw_text.strip():
@@ -347,22 +409,55 @@ class BedrockService:
             or (payload.get("repair_plan") or {}).get("stitch_repair_contracts")
             or []
         )
+
+        candidate_files = []
+        if payload.get("source_files"):
+            for sf in payload["source_files"]:
+                if isinstance(sf, dict) and sf.get("path"):
+                    candidate_files.append(sf["path"])
+                elif isinstance(sf, str):
+                    candidate_files.append(sf)
+
         guidance = []
         for idx, contract in enumerate(contracts[:5]):
             cid = contract.get("contract_id", f"STITCH-RC-00{idx+1}")
             f_refs = contract.get("finding_refs") or [f"RCG-{idx+1}"]
+
+            contract_target_files = []
+            if candidate_files:
+                non_test_files = [f for f in candidate_files if not f.startswith("test") and "test_" not in f]
+                contract_target_files = non_test_files if non_test_files else candidate_files[:1]
+            elif "ledger" in str(contract) or "ledger" in str(payload):
+                contract_target_files = ["ledger.py"]
+            elif "Calculator" in str(payload) or "php" in str(payload):
+                contract_target_files = ["src/Calculator.php"]
+            else:
+                contract_target_files = ["app.py"]
+
+            target_symbols = []
+            if any("app.py" in f for f in contract_target_files) or "divide" in str(payload):
+                target_symbols = ["divide", "app"]
+            elif any("ledger" in f for f in contract_target_files):
+                target_symbols = ["split_payment"]
+            elif any("Calculator" in f for f in contract_target_files):
+                target_symbols = ["calculate", "divide"]
+            else:
+                target_symbols = ["main"]
+
+            primary_target = contract_target_files[0] if contract_target_files else "app.py"
+
             guidance.append({
                 "guidance_id": f"RAG-00{idx+1}",
                 "repair_contract_ref": cid,
                 "finding_refs": f_refs,
-                "target_files": ["ledger.py"] if "ledger" in str(contract) else ["src/main.py"],
-                "target_symbols": ["split_payment"] if "ledger" in str(contract) else ["main"],
+                "target_files": contract_target_files,
+                "target_symbols": target_symbols,
                 "implementation_intent": f"Apply surgical fix addressing contract {cid}.",
-                "code_level_approach": "Adjust boundary calculations to eliminate precision/logical defects.",
-                "change_boundary": "Internal function scope.",
+                "code_level_approach": "Adjust boundary calculations and parameter validation to eliminate runtime defect.",
+                "change_boundary": f"Application source file ({primary_target}).",
                 "protected_behavior": "Preserve function signatures and callers.",
-                "side_effect_considerations": "Zero side-effects outside target function.",
-                "targeted_verification": "pytest -v",
+                "side_effect_considerations": "Zero side-effects outside target function scope.",
+                "targeted_verification": "pytest -v" if not any(".php" in f for f in contract_target_files) else "./vendor/bin/phpunit",
                 "regression_verification": "Run full test suite",
                 "suggested_patch": None,
                 "patch_validation_status": "VALIDATED",

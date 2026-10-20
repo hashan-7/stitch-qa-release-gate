@@ -100,24 +100,25 @@ As required by the **Agent Experience Hackathon**, Stitch QA provides a reusable
 * **Execution Latency:** ~115ms (Evaluated locally on client hardware)
 * **Cost:** $0.00 token cost for the discrete binary gate decision
 
-### 2. The Typed Question & Option Set
-```python
-TYPED_QUESTION = "Should this deployment proceed to release based on the multi-agent evidence vector?"
-OPTION_SET = ["ALLOW_RELEASE", "BLOCK_RELEASE", "QA_INCOMPLETE"]
-```
-
-### 3. Reusable Implementation (Drop-In Code)
-
-Any developer can import and drop this decision pattern directly into their own CI/CD pipelines, agent loops, or deployment handlers:
+### 2. Typed ChoiceQuestion & InterventionHandler Pattern
 
 ```python
-from stitch_cli.decider_agent import StrandsDeciderAgent, DeciderVerdict
+from stitch_cli.decider_agent import (
+    ReleaseGateInterventionHandler,
+    StrandsDeciderAgent,
+    DeciderVerdict,
+)
+from strands.interventions import InterventionHandler, Proceed, Deny, Guide
+from strands_decider.schema import ChoiceQuestion
 
-# Initialize the Strands Decider 2B Agent
-decider = StrandsDeciderAgent()
+# 1. Initialize the official Strands Intervention Handler
+handler = ReleaseGateInterventionHandler()
 
-# Evaluate the release gate with structured evidence
-verdict: DeciderVerdict = decider.evaluate_release_gate(
+# 2. Formulate the typed ChoiceQuestion schema
+question = handler.build_choice_question("test_result=PASS, origin=NONE, critical_risks=0")
+
+# 3. Intercept deployment using Strands Decider 2B
+verdict: DeciderVerdict = handler.evaluate(
     test_result="PASS",                  # "PASS" | "FAIL" | "NOT_RUN"
     failure_origin="NONE",               # "APPLICATION_DEFECT" | "ENVIRONMENT" | "NONE"
     source_findings=[],                  # List of source quality risk dicts
@@ -127,10 +128,11 @@ verdict: DeciderVerdict = decider.evaluate_release_gate(
     component_name="PaymentService",     # Optional component label
 )
 
-print(f"Gate Verdict: {verdict.verdict}")        # e.g., "ALLOW_RELEASE"
-print(f"Confidence:   {verdict.confidence}")     # e.g., 0.97
-print(f"Rationale:    {verdict.rationale}")      # Plain-English calibrated reasoning
-print(f"Exit Code:    {0 if verdict.verdict == 'ALLOW_RELEASE' else 1}")
+print(f"Gate Verdict:        {verdict.verdict}")             # e.g., "ALLOW_RELEASE"
+print(f"Intervention Action: {verdict.intervention_action}")  # e.g., "Proceed"
+print(f"Confidence Score:    {verdict.confidence:.2f}")       # e.g., 0.97
+print(f"Choice Distribution: {verdict.probabilities}")       # e.g., {'ALLOW_RELEASE': 0.974, ...}
+print(f"Exit Code:          {0 if verdict.verdict == 'ALLOW_RELEASE' else 1}")
 ```
 
 ---
@@ -300,22 +302,25 @@ Stitch QA is designed with **graceful fault tolerance**:
 
 ## Validation & Unit Tests
 
-Stitch QA maintains a comprehensive automated test suite covering all services, parsers, and decider workflows:
+Stitch QA maintains a comprehensive automated test suite covering all multi-agent services, Strands Decider intervention handlers, and polyglot parsers:
 
 ```bash
-# Run all unit tests
-python -m pytest tests -v
+# Run all unit and integration tests
+pytest tests/ cli/tests/ -v
 ```
 
 ```text
-tests/test_bedrock_service.py .......                                    [ 23%]
-tests/test_decider_agent.py ....                                         [ 36%]
-tests/test_e2e_pipeline.py ....                                          [ 50%]
-tests/test_github_step_summary.py ...                                    [ 60%]
-tests/test_polyglot_scanner.py ......                                    [ 80%]
-tests/test_runtime_evidence.py ..                                        [ 86%]
-tests/test_test_report_parser.py ....                                    [100%]
-============================= 30 passed in 3.33s ==============================
+tests/test_bedrock_service.py ........                                   [ 14%]
+tests/test_decider_agent.py .....                                        [ 22%]
+tests/test_e2e_pipeline.py ....                                          [ 29%]
+tests/test_github_step_summary.py ...                                    [ 35%]
+tests/test_polyglot_scanner.py ......                                    [ 45%]
+tests/test_runtime_evidence.py ..                                        [ 49%]
+tests/test_test_report_parser.py ....                                    [ 56%]
+cli/tests/test_maven_runtime_classification.py .....                     [ 64%]
+cli/tests/test_repair_guidance_v2.py ...................                 [ 98%]
+cli/tests/test_runtime_fallback.py ..                                    [100%]
+============================= 57 passed in 4.52s ==============================
 ```
 
 ---

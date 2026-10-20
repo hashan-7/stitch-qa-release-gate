@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stitch-cli"
-version = "0.2.0"
-description = "CLI tool for Stitch QA"
+version = "0.3.0"
+description = "Autonomous Pre-Deployment Release Gate powered by AWS Bedrock and Strands Decider 2B"
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.1,<9",
@@ -13,7 +13,9 @@ dependencies = [
     "requests>=2.32,<3",
     "urllib3>=2.2,<3",
     "pytest>=8,<10",
-    "boto3>=1.34,<2"
+    "boto3>=1.34,<2",
+    "strands-agents>=1.0.0",
+    "strands-decider>=0.2.0"
 ]
 
 [project.scripts]

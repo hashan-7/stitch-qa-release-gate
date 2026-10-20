@@ -2418,18 +2418,27 @@ def build_qa_decision_markdown(
     strands_decider = qa_decision.get("strands_decider")
     decider_section = ""
     if strands_decider:
+        probs = strands_decider.get("probabilities", {})
+        prob_str = ", ".join(f"{k}: {v:.1%}" for k, v in probs.items()) if probs else ""
+        rows = [
+            ["Gate Verdict", f"**{strands_decider.get('verdict')}**"],
+            ["Intervention Action", f"`{strands_decider.get('intervention_action', 'Proceed')}`"],
+            ["Confidence Score", f"{strands_decider.get('confidence', 0.0):.2f}"],
+        ]
+        if prob_str:
+            rows.append(["Choice Probabilities", f"`{prob_str}`"])
+        rows.extend([
+            ["Risk Score", f"{strands_decider.get('risk_score', 0.0):.2f}"],
+            ["Decision Rationale", strands_decider.get("rationale", "")],
+            ["Model", strands_decider.get("model", "strands-decider-2b")],
+            ["Engine Architecture", strands_decider.get("engine_mode", "Strands Decider 2B Calibrated Head")],
+        ])
         decider_table = format_markdown_table(
             [
                 "Strands Decider 2B Field",
                 "Value",
             ],
-            [
-                ["Gate Verdict", f"**{strands_decider.get('verdict')}**"],
-                ["Confidence Score", f"{strands_decider.get('confidence', 0.0):.2f}"],
-                ["Risk Score", f"{strands_decider.get('risk_score', 0.0):.2f}"],
-                ["Decision Rationale", strands_decider.get("rationale", "")],
-                ["Model", strands_decider.get("model", "strands-decider-2b")],
-            ],
+            rows,
         )
         decider_section = f"### Strands Decider 2B Release Gate\n\n{decider_table}\n\n"
 

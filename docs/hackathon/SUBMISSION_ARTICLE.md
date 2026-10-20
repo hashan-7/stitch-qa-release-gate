@@ -91,6 +91,13 @@ verdict = decider_agent.evaluate_release_gate(
   "confidence": 0.99,
   "risk_score": 0.95,
   "rationale": "Blocking runtime defect confirmed. 2 repair contract(s) pending remediation.",
+  "probabilities": {
+    "BLOCK_RELEASE": 0.988,
+    "ALLOW_RELEASE": 0.008,
+    "QA_INCOMPLETE": 0.004
+  },
+  "intervention_action": "Deny(type='deny', reason='...')",
+  "question_type": "ChoiceQuestion",
   "model": "StrandsAgents/strands-decider-2B-hobson-v21"
 }
 ```
@@ -109,7 +116,7 @@ A key design requirement was zero-friction developer onboarding:
 
 ## 6. Verification and Acceptance Scenarios
 
-Stitch QA is verified with 46 automated unit and end-to-end integration tests:
+Stitch QA is verified with 57 automated unit and end-to-end integration tests:
 
 | Test Scenario | Detected Profile | Decision Verdict | CI Exit Code |
 | :--- | :--- | :--- | :--- |

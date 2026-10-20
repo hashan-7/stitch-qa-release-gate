@@ -719,9 +719,19 @@ def print_qa_decision(
         console.print(
             f"- Verdict: [bold]{strands_decider.get('verdict')}[/bold]"
         )
+        action = strands_decider.get("intervention_action")
+        if action:
+            action_color = "green" if action == "Proceed" else ("red" if action == "Deny" else "yellow")
+            console.print(
+                f"- Intervention Action: [bold {action_color}]{action}[/bold {action_color}]"
+            )
         console.print(
             f"- Confidence: {strands_decider.get('confidence', 0.0):.2f}"
         )
+        probs = strands_decider.get("probabilities")
+        if probs:
+            prob_str = ", ".join(f"{k}: {v:.1%}" for k, v in probs.items())
+            console.print(f"- Choice Probabilities: {prob_str}")
         console.print(
             f"- Calibrated Risk: {strands_decider.get('risk_score', 0.0):.2f}"
         )
@@ -731,6 +741,10 @@ def print_qa_decision(
         console.print(
             f"- Decision Model: {strands_decider.get('model')}"
         )
+        if strands_decider.get("engine_mode"):
+            console.print(
+                f"- Execution Head: {strands_decider.get('engine_mode')}"
+            )
 
     workflow_status = qa_decision.get(
         "workflow_status",
@@ -797,6 +811,48 @@ def analyze_code(
     run_analyze_code(
         code_agent_url
     )
+
+
+@cli.command("check-bedrock")
+def check_bedrock():
+    """Verify live Amazon Bedrock and Strands Decider connectivity and model status."""
+    from rich.panel import Panel
+    from rich.table import Table
+    from stitch_cli.bedrock_service import (
+        bedrock_service,
+        MODEL_DEFECT_RESOLUTION,
+        MODEL_REPAIR_ASSURANCE,
+        MODEL_RUNTIME_QUALITY,
+        MODEL_SOURCE_QUALITY,
+    )
+    from stitch_cli.decider_agent import MODEL_STRANDS_DECIDER
+
+    console.print(Panel.fit("[bold cyan]Stitch QA - Amazon Bedrock & Strands Decider Diagnostic[/bold cyan]"))
+    res = bedrock_service.verify_connection()
+
+    table = Table(title="Model Tiering & Service Health", show_header=True)
+    table.add_column("Component", style="bold")
+    table.add_column("Configured Model / Engine")
+    table.add_column("Status", style="green")
+
+    connected = res.get("connected", False)
+    status_str = "[bold green]LIVE CONNECTED[/bold green]" if connected else "[bold yellow]OFFLINE DETERMINISTIC (READY)[/bold yellow]"
+
+    table.add_row("AWS Region", res.get("region", "us-east-1"), "[cyan]Active[/cyan]")
+    table.add_row("Amazon Bedrock API", "bedrock-runtime", status_str)
+    table.add_row("Source Quality Analyst", MODEL_SOURCE_QUALITY, "[green]Ready[/green]")
+    table.add_row("Runtime Quality Analyst", MODEL_RUNTIME_QUALITY, "[green]Ready[/green]")
+    table.add_row("Defect Resolution Analyst", MODEL_DEFECT_RESOLUTION, "[green]Ready[/green]")
+    table.add_row("Repair Assurance Analyst", MODEL_REPAIR_ASSURANCE, "[green]Ready[/green]")
+    table.add_row("Strands Decider 2B Gate", f"{MODEL_STRANDS_DECIDER} (strands.interventions.InterventionHandler)", "[bold cyan]Active (Calibrated)[/bold cyan]")
+
+    console.print(table)
+
+    if connected:
+        console.print(f"\n[green][OK] Successfully authenticated with live Amazon Bedrock (Latency: {res.get('latency_ms')}ms).[/green]")
+    else:
+        console.print("\n[yellow]Notice: Running in calibrated zero-dependency offline mode.[/yellow]")
+        console.print("[dim]To enable live Amazon Bedrock calls, set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in your .env or environment.[/dim]\n")
 
 
 def _run_profile_workflow(

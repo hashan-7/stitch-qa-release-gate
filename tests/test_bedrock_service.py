@@ -93,3 +93,24 @@ def test_mock_repair_assurance():
     result = service.invoke(MODEL_REPAIR_ASSURANCE, "system prompt", payload)
     assert "guidance" in result
     assert result["remediation_ready"] is True
+
+
+def test_mock_repair_assurance_targets_dynamic_source_file():
+    service = BedrockService()
+    payload = {
+        "source_files": [{"path": "app.py"}],
+        "repair_contracts": [
+            {"contract_id": "RPC-1", "repair_objective": "Fix division by zero"}
+        ],
+    }
+    result = service.invoke(MODEL_REPAIR_ASSURANCE, "system prompt", payload)
+    assert result["guidance"][0]["target_files"] == ["app.py"]
+    assert "src/main.py" not in result["guidance"][0]["target_files"]
+
+
+def test_bedrock_service_verify_connection_offline():
+    service = BedrockService()
+    diag = service.verify_connection()
+    assert diag["connected"] is False
+    assert diag["mode"] == "bedrock-deterministic-offline"
+    assert "region" in diag
