@@ -52,3 +52,6 @@ demo-ts*/
 *.swp
 *.swo
 *~
+# Fixture caches
+tests/fixtures/**/.pytest_cache/
+tests/fixtures/**/junit.xml
