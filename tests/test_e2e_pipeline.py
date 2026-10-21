@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 PYTHON_EXE = sys.executable
 
 
@@ -18,7 +19,7 @@ def run_stitch_cli(*args):
 
 
 def test_e2e_passing_project_allows_release():
-    target = ROOT_DIR / "test-docker-pytest-pass"
+    target = FIXTURES_DIR / "test-docker-pytest-pass"
     res = run_stitch_cli("scan", "--run", str(target))
     assert res.returncode == 0
     assert "ALLOW_RELEASE" in res.stdout
@@ -31,7 +32,7 @@ def test_e2e_passing_project_allows_release():
 
 
 def test_e2e_failing_project_blocks_release():
-    target = ROOT_DIR / "test-project"
+    target = FIXTURES_DIR / "test-project"
     res = run_stitch_cli("scan", "--run", "--analyze", "--repair", "--code-fix", str(target))
     assert res.returncode == 1
     assert "BLOCK_RELEASE" in res.stdout
@@ -44,7 +45,7 @@ def test_e2e_failing_project_blocks_release():
 
 
 def test_e2e_source_only_project_marks_incomplete():
-    target = ROOT_DIR / "test-project-python-source-only"
+    target = FIXTURES_DIR / "test-project-python-source-only"
     res = run_stitch_cli("scan", "--run", str(target))
     assert res.returncode == 1
     assert "QA_INCOMPLETE" in res.stdout
@@ -52,7 +53,7 @@ def test_e2e_source_only_project_marks_incomplete():
 
 
 def test_e2e_unsupported_project_exits_cleanly():
-    target = ROOT_DIR / "test-project-php-unsupported"
+    target = FIXTURES_DIR / "test-project-php-unsupported"
     res = run_stitch_cli("scan", "--run", str(target))
     assert res.returncode == 0
     assert "Skipping execution" in res.stdout
