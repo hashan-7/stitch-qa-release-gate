@@ -152,7 +152,7 @@ pip install -e ./cli
 ### Full Multi-Agent Scan
 ```bash
 # Evaluates source quality, executes tests, triages logs, generates repair contracts, and gates release
-stitch scan --run --analyze --repair --code-fix ./test-project
+stitch scan --run --analyze --repair --code-fix tests/fixtures/test-project
 ```
 
 ### Containerized Deployment

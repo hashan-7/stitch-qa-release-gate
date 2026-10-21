@@ -42,7 +42,7 @@
 **Visual:**
 - Terminal recording running:
   ```bash
-  stitch scan --run --analyze --repair --code-fix ./test-project
+  stitch scan --run --analyze --repair --code-fix tests/fixtures/test-project
   ```
 - Fast-forward through the Rich CLI output:
   - Source review completes.
@@ -75,7 +75,7 @@
 **Visual:**
 - Terminal recording running:
   ```bash
-  stitch scan --run ./test-docker-pytest-pass
+  stitch scan --run tests/fixtures/test-docker-pytest-pass
   ```
 - Output prints:
   ```
