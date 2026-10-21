@@ -1,6 +1,6 @@
 # Stitch QA: Autonomous Pre-Deployment Release Gate with AWS Bedrock and Strands Decider 2B
 
-**Author:** H7  
+**Author:** Chamira Hashan (H7)  
 **Hackathon Category:** Agent Experience Hackathon: Strands Decider  
 **Repository:** [github.com/hashan-7/stitch-qa-release-gate](https://github.com/hashan-7/stitch-qa-release-gate)  
 **Demo Video:** [Watch on YouTube (1m 15s)](https://youtu.be/qWX6xCFNVWA)  

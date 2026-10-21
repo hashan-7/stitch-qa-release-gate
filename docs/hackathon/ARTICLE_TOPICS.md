@@ -1,7 +1,7 @@
 # Stitch QA: Recommended AWS Builder Center Article Topics
 
 **Project:** Stitch QA (AWS Agent Experience Hackathon: Strands Decider)  
-**Author:** H7  
+**Author:** Chamira Hashan (H7)  
 **Repository:** [github.com/hashan-7/stitch-qa-release-gate](https://github.com/hashan-7/stitch-qa-release-gate)  
 **Required Hackathon Tags:** `#strands-decider-2b` `#policy` `#guardrails`
 
