@@ -3,8 +3,14 @@
 **Author:** H7  
 **Hackathon Category:** Agent Experience Hackathon: Strands Decider  
 **Repository:** [github.com/hashan-7/stitch-qa-release-gate](https://github.com/hashan-7/stitch-qa-release-gate)  
+**Demo Video:** [Watch on YouTube (1m 15s)](https://youtu.be/98vrd8DZOH0)  
 **License:** MIT  
 **Tags:** `#strands-decider-2b` `#policy` `#guardrails`  
+
+---
+
+> 🎬 **Demo Video Walkthrough**: [https://youtu.be/98vrd8DZOH0](https://youtu.be/98vrd8DZOH0)  
+> *Watch Stitch QA dynamically catch a runtime defect, plan a surgical repair contract, emit BLOCK_RELEASE (99.5%), and subsequently verify a passing regression suite to emit ALLOW_RELEASE (98.3%).*  
 
 ---
 
