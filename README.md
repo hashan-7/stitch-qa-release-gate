@@ -10,11 +10,11 @@
 [![Unit & Integration Tests](https://github.com/hashan-7/stitch-qa-release-gate/actions/workflows/tests.yml/badge.svg)](https://github.com/hashan-7/stitch-qa-release-gate/actions/workflows/tests.yml)
 [![GitHub Actions CI](https://img.shields.io/badge/GitHub%20Actions-Step%20Summary%20Gate-2088FF?logo=github-actions&logoColor=white)](https://github.com/features/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Demo Video](https://img.shields.io/badge/Demo%20Video-YouTube-FF0000?logo=youtube&logoColor=white)](https://youtu.be/98vrd8DZOH0)
+[![Demo Video](https://img.shields.io/badge/Demo%20Video-YouTube-FF0000?logo=youtube&logoColor=white)](https://youtu.be/qWX6xCFNVWA)
 
 > Built for the **Agent Experience Hackathon: Strands Decider** on AWS Builder Center.  
 > **Tags:** `#strands-decider-2b` `#policy` `#guardrails`
-> 🎬 **YouTube Demo Walkthrough (75s):** [https://youtu.be/98vrd8DZOH0](https://youtu.be/98vrd8DZOH0)  
+> 🎬 **YouTube Demo Walkthrough (75s):** [https://youtu.be/qWX6xCFNVWA](https://youtu.be/qWX6xCFNVWA)  
 
 **Stitch QA** is an enterprise-grade, multi-agent pre-deployment release gate that orchestrates **Amazon Bedrock foundation models** and **Strands Decider 2B** to turn raw code, execution logs, and runtime evidence into rigorous release decisions.
 
